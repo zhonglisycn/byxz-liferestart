@@ -1,0 +1,235 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="finish">结束</text>
+      <text class="t-title" style="font-size: {{fs(17, fontTick)}}px">{{age}} 岁</text>
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="toggleAuto">{{auto ? '暂停' : '自动'}}</text>
+    </div>
+
+    <div class="status">
+      <text class="t-status" style="font-size: {{fs(12, fontTick)}}px">{{attrText}}</text>
+      <text class="t-sub" style="font-size: {{fs(12, fontTick)}}px">{{lifeText}}</text>
+    </div>
+
+    <div class="path-line" @click="showInfo">
+      <text class="path-text" style="font-size: {{fs(11, fontTick)}}px">{{realmText}}</text>
+      <text class="path-hint" style="font-size: {{fs(11, fontTick)}}px">词条›</text>
+    </div>
+
+    <div class="now">
+      <text class="now-title {{kindClass}}" style="font-size: {{fs(16, fontTick)}}px">{{cur.title}}</text>
+      <text class="now-text" style="font-size: {{fs(13, fontTick)}}px">{{cur.text}}</text>
+      <text class="now-chg" style="font-size: {{fs(12, fontTick)}}px">{{cur.changes}}</text>
+    </div>
+
+    <scroll class="log">
+      <div class="log-row" for="{{logs}}" tid="id">
+        <text class="log-age" style="font-size: {{fs(12, fontTick)}}px">{{$item.age}}岁</text>
+        <text class="log-text" style="font-size: {{fs(12, fontTick)}}px">{{$item.line}}</text>
+      </div>
+    </scroll>
+
+    <div class="mask" if="{{info}}">
+      <div class="dialog">
+        <text class="t-dlg-title" style="font-size: {{fs(15, fontTick)}}px">本局词条</text>
+        <scroll class="info-scroll">
+          <text class="info-line" style="font-size: {{fs(12, fontTick)}}px" for="{{talentLines}}" tid="id">{{$item}}</text>
+          <text class="info-sec" style="font-size: {{fs(12, fontTick)}}px">随身之物</text>
+          <text class="info-line" style="font-size: {{fs(12, fontTick)}}px" for="{{itemLines}}" tid="id">{{$item}}</text>
+        </scroll>
+        <div class="dialog-btn dialog-btn-ok" @click="hideInfo">
+          <text class="t-dlg-btn" style="font-size: {{fs(14, fontTick)}}px">知道了</text>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn btn-primary" style="width: 100%;" @click="next">
+      <text class="t-btn" style="font-size: {{fs(16, fontTick)}}px">{{auto ? '进行中…' : '下一年'}}</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import { fs, ensureScale } from '../../common/core/ui'
+import { setContent, step, pathText, ATTRS, lifespan, talentById, itemById } from '../../common/core/engine'
+import { loadKey } from '../../common/core/util'
+
+const MAX_LOG = 40
+
+export default {
+  fs: fs,
+
+  private: {
+    fontTick: 0,
+    age: 0,
+    attrText: '',
+    realmText: '',
+    lifeText: '',
+    cur: { title: '出生', text: '你睁开了眼睛。', changes: '', kindClass: '' },
+    logs: [],
+    auto: false,
+    timer: null,
+    timer2: null,
+    done: false,
+    interval: 420,
+    info: false,
+    talentLines: [],
+    itemLines: []
+  },
+
+  onInit() {
+    ensureScale(() => { this.fontTick++ })
+    setContent(this.$app.$def.CONTENT)
+    const run = this.$app.$def.run
+    if (!run) { router.replace({ uri: 'pages/index' }); return }
+    loadKey('lr_speed', (ok, v) => { this.interval = (ok && v === '1') ? 200 : 420 })
+    this.sync()
+  },
+
+  onHide() { this.stopAuto() },
+  onDestroy() {
+    this.stopAuto()
+    if (this.timer2) { clearTimeout(this.timer2); this.timer2 = null }
+  },
+
+  sync() {
+    const run = this.$app.$def.run
+    this.age = run.age
+    const parts = []
+    const short = { iq: '智', eq: '情', hp: '体', luck: '运' }
+    ATTRS.forEach(k => parts.push(short[k] + run.attrs[k]))
+    this.attrText = parts.join(' ')
+    this.realmText = pathText(run)
+    this.lifeText = '寿' + Math.round(lifespan(run))
+    const last = run.log.length ? run.log[run.log.length - 1] : null
+    if (last) {
+      this.cur = {
+        title: last.title,
+        text: last.text,
+        changes: (last.changes && last.changes.length) ? last.changes.join('  ') : '',
+        kindClass: last.kind === 'path' ? 'k-path' : (last.kind === 'trial' ? 'k-danger' : (last.kind === 'danger' ? 'k-danger' : ''))
+      }
+    }
+    const logs = []
+    for (let i = run.log.length - 1; i >= 0 && logs.length < MAX_LOG; i--) {
+      const l = run.log[i]
+      // 用日志自带的 seq 当行 id：日志封顶后会从头部丢旧条目，序号不会整体错位，
+      // 界面只需插一行、删一行，不必整屏重建。
+      logs.push({ id: 'L' + (l.seq !== undefined ? l.seq : i), age: l.age, line: l.title + '：' + l.text })
+    }
+    this.logs = logs
+  },
+
+  showInfo() {
+    const run = this.$app.$def.run
+    if (!run) return
+    this.$app.$def.tap()
+    this.talentLines = (run.talents || []).map(id => {
+      const t = talentById(id)
+      return t ? (t.name + '：' + t.desc) : id
+    })
+    if (!this.talentLines.length) this.talentLines = ['（没有词条）']
+    this.itemLines = (run.items || []).map(id => {
+      const it = itemById(id)
+      return it ? (it.kind + '·' + it.name + '：' + it.desc) : id
+    })
+    if (!this.itemLines.length) this.itemLines = ['（空手）']
+    this.info = true
+  },
+
+  hideInfo() {
+    this.info = false
+  },
+
+  next() {
+    const run = this.$app.$def.run
+    if (!run || !run.alive) { this.finish(); return }
+    step(run)
+    this.sync()
+    if (!run.alive) {
+      this.stopAuto()
+      this.timer2 = setTimeout(() => this.finish(), 700)
+    }
+  },
+
+  toggleAuto() {
+    this.$app.$def.tap()
+    if (this.auto) { this.stopAuto(); return }
+    this.auto = true
+    this.timer = setInterval(() => { this.next() }, this.interval)
+  },
+
+  stopAuto() {
+    this.auto = false
+    if (this.timer) { clearInterval(this.timer); this.timer = null }
+  },
+
+  /** 只允许跳一次：死亡后的延时跳转可能撞上用户手动点"结束" */
+  finish() {
+    if (this.done) return
+    this.done = true
+    this.stopAuto()
+    if (this.timer2) { clearTimeout(this.timer2); this.timer2 = null }
+    // replace：这局人生已经结束，不必再回退到死亡后的页面
+    router.replace({ uri: 'pages/end' })
+  }
+}
+</script>
+
+<style>
+  @import '../../common/style/base.css';
+
+  .now {
+    width: 100%;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding: 8px;
+    border-radius: 12px;
+    background-color: rgba(120, 120, 121, 0.22);
+    margin-bottom: 6px;
+  }
+
+  .now-title { color: #ffc857; text-align: center; width: 100%; }
+  .k-path { color: #bb86fc; }
+  .k-danger { color: #ff8a65; }
+  .now-text { color: #f0e6d2; margin-top: 4px; }
+  .now-chg { color: #6fcf97; margin-top: 3px; }
+
+  .path-line {
+    width: 100%;
+    height: 16px;
+    flex-shrink: 0;
+    align-items: center;
+  }
+
+  .path-text { color: #bb86fc; flex: 1; }
+  .path-hint { color: #8b8f96; }
+
+  .info-scroll {
+    width: 100%;
+    max-height: 190px;
+    flex-direction: column;
+    margin-top: 4px;
+    margin-bottom: 4px;
+  }
+
+  .info-line { color: #5c3a21; margin-top: 2px; }
+  .info-sec { color: #8d7a52; margin-top: 6px; }
+
+  .log {
+    width: 100%;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .log-row {
+    flex-direction: row;
+    width: 100%;
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+
+  .log-age { color: #8b8f96; width: 44px; }
+  .log-text { color: #b9bec6; flex: 1; }
+</style>

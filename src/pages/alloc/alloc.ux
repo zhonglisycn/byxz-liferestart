@@ -1,0 +1,153 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="back">返回</text>
+      <text class="t-title" style="font-size: {{fs(17, fontTick)}}px">分配属性</text>
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px"></text>
+    </div>
+
+    <div class="status">
+      <text class="t-status" style="font-size: {{fs(13, fontTick)}}px">剩余点数 {{left}}</text>
+      <text class="t-sub" style="font-size: {{fs(12, fontTick)}}px">共 20 点</text>
+    </div>
+
+    <div class="rows">
+      <div class="row2" for="{{rows}}" tid="k">
+        <text class="row-name" style="font-size: {{fs(15, fontTick)}}px">{{$item.name}}</text>
+        <div class="step" @click="dec($item.k)">
+          <text class="step-t" style="font-size: {{fs(20, fontTick)}}px">−</text>
+        </div>
+        <text class="row-val" style="font-size: {{fs(18, fontTick)}}px">{{$item.v}}</text>
+        <div class="step" @click="inc($item.k)">
+          <text class="step-t" style="font-size: {{fs(20, fontTick)}}px">+</text>
+        </div>
+      </div>
+    </div>
+
+    <div class="talents">
+      <text class="t-sub" style="font-size: {{fs(11, fontTick)}}px">{{talentText}}</text>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="btn {{left === 0 ? 'btn-primary' : 'btn-quiet'}}" style="width: 100%;" @click="start">
+      <text class="t-btn" style="font-size: {{fs(15, fontTick)}}px">{{left === 0 ? '开始人生' : '还剩 ' + left + ' 点'}}</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import { fs, ensureScale } from '../../common/core/ui'
+import { setContent, alloc, talentById, ATTRS, ATTR_NAME, TOTAL_POINTS } from '../../common/core/engine'
+
+export default {
+  fs: fs,
+
+  private: {
+    fontTick: 0,
+    rows: [],
+    left: TOTAL_POINTS,
+    talentText: ''
+  },
+
+  onInit() {
+    ensureScale(() => { this.fontTick++ })
+    setContent(this.$app.$def.CONTENT)
+    const run = this.$app.$def.run
+    if (!run) { router.replace({ uri: 'pages/index' }); return }
+    run.attrs = { iq: 0, eq: 0, hp: 0, luck: 0 }
+    if (run.talents && run.talents.length) {
+      this.talentText = '天赋：' + run.talents.map(id => {
+        const t = talentById(id)
+        return t ? t.name : id
+      }).join('、')
+    }
+    this.refresh()
+    this.left = TOTAL_POINTS
+  },
+
+  refresh() {
+    const run = this.$app.$def.run
+    this.rows = ATTRS.map(k => ({ k: k, name: ATTR_NAME[k], v: run.attrs[k] }))
+    let used = 0
+    ATTRS.forEach(k => { used += run.attrs[k] })
+    this.left = TOTAL_POINTS - used
+  },
+
+  inc(k) {
+    const run = this.$app.$def.run
+    if (this.left <= 0) return
+    run.attrs[k]++
+    this.$app.$def.tap()
+    this.refresh()
+  },
+
+  dec(k) {
+    const run = this.$app.$def.run
+    if (run.attrs[k] <= 0) return
+    run.attrs[k]--
+    this.$app.$def.tap()
+    this.refresh()
+  },
+
+  start() {
+    if (this.left !== 0) return
+    this.$app.$def.tap()
+    const run = this.$app.$def.run
+    if (!alloc(run, run.attrs)) { this.left = -1; return }
+    router.replace({ uri: 'pages/life' })
+  },
+
+  // 不用 router.back()：上一页已被 replace 掉，back 没有可回退的页；
+  // 显式回首页，语义就是"放弃这局，重新抽词条"。
+  back() { router.replace({ uri: 'pages/index' }) }
+}
+</script>
+
+<style>
+  @import '../../common/style/base.css';
+
+  .rows {
+    width: 100%;
+    flex-direction: column;
+    flex-shrink: 0;
+    margin-top: 8px;
+  }
+
+  .row2 {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 52px;
+    margin-bottom: 6px;
+    padding-left: 12px;
+    padding-right: 8px;
+    border-radius: 12px;
+    background-color: rgba(120, 120, 121, 0.22);
+  }
+
+  .row-name { color: #f0e6d2; }
+  .row-val { color: #ffc857; width: 34px; text-align: center; }
+
+  .step {
+    width: 46px;
+    height: 46px;
+    border-radius: 23px;
+    background-color: #4a4f57;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .step-t { color: #ffffff; text-align: center; width: 100%; }
+
+  .talents {
+    width: 100%;
+    margin-top: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .spacer { flex: 1; }
+</style>

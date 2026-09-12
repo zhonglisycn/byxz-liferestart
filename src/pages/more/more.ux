@@ -1,0 +1,144 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="back">返回</text>
+      <text class="t-title" style="font-size: {{fs(17, fontTick)}}px">设置</text>
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px"></text>
+    </div>
+
+    <div class="rows">
+      <div class="item" @click="cycleFont">
+        <text class="t-item-k" style="font-size: {{fs(15, fontTick)}}px">字体大小</text>
+        <text class="t-item-v" style="font-size: {{fs(14, fontTick)}}px">{{fontName}}</text>
+      </div>
+      <div class="item" @click="toggleAutoSpeed">
+        <text class="t-item-k" style="font-size: {{fs(15, fontTick)}}px">自动播放速度</text>
+        <text class="t-item-v" style="font-size: {{fs(14, fontTick)}}px">{{speedName}}</text>
+      </div>
+      <div class="item" @click="goCodex">
+        <text class="t-item-k" style="font-size: {{fs(15, fontTick)}}px">词条图鉴</text>
+        <text class="t-item-v" style="font-size: {{fs(14, fontTick)}}px">{{codexText}}</text>
+      </div>
+      <div class="item" @click="showCounts">
+        <text class="t-item-k" style="font-size: {{fs(15, fontTick)}}px">内容规模</text>
+        <text class="t-item-v" style="font-size: {{fs(14, fontTick)}}px">查看</text>
+      </div>
+    </div>
+
+    <scroll class="scroll">
+      <text class="sec" style="font-size: {{fs(13, fontTick)}}px">玩法说明</text>
+      <text class="rule" style="font-size: {{fs(12, fontTick)}}px">1. 开局抽 10 个天赋词条，选 3 个带走</text>
+      <text class="rule" style="font-size: {{fs(12, fontTick)}}px">2. 把 20 点分配到智力 / 情商 / 体质 / 幸运</text>
+      <text class="rule" style="font-size: {{fs(12, fontTick)}}px">3. 逐年推进人生，属性决定你能遇到什么事</text>
+      <text class="rule" style="font-size: {{fs(12, fontTick)}}px">4. 有天赋者会踏入四条体系之一：修仙 / 炼体 / 魔法 / 科技</text>
+      <text class="rule" style="font-size: {{fs(12, fontTick)}}px">5. 积累圆满会自动尝试突破，失败会受伤并掉道心（铁骨/灵性/严谨）</text>
+      <text class="rule" style="font-size: {{fs(12, fontTick)}}px">6. 死亡后按结局与成就评分，词条会记进图鉴</text>
+      <text class="rule" style="font-size: {{fs(12, fontTick)}}px">7. 一生只有一次"大难不死"，且与幸运有关</text>
+
+      <text class="sec" style="font-size: {{fs(13, fontTick)}}px">关于</text>
+      <text class="rule" style="font-size: {{fs(12, fontTick)}}px">人生重开 · 修仙　v{{version}}</text>
+      <text class="rule" style="font-size: {{fs(12, fontTick)}}px">作者：模糊二维码byxz</text>
+      <text class="rule" style="font-size: {{fs(12, fontTick)}}px">{{counts}}</text>
+    </scroll>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import { fs, ensureScale, getScale, saveScale, FONT_NAMES, FONT_STEPS } from '../../common/core/ui'
+import { loadKey, saveKey } from '../../common/core/util'
+import { setContent, counts } from '../../common/core/engine'
+
+export default {
+  fs: fs,
+
+  private: {
+    fontTick: 0,
+    fontName: '标准',
+    speedName: '正常',
+    codexText: '',
+    version: '2.2.1',
+    counts: ''
+  },
+
+  onInit() {
+    ensureScale(() => { this.syncFont(); this.fontTick++ })
+    setContent(this.$app.$def.CONTENT)
+    this.syncFont()
+    const c = counts()
+    this.counts = '词条 ' + c.talents + ' · 事件 ' + c.events + ' · 物品 ' + c.items +
+      ' · 结局 ' + c.endings + ' · 成就 ' + c.achievements + ' · 体系 ' + c.paths
+    loadKey('lr_speed', (ok, v) => { this.speedName = (ok && v === '1') ? '快速' : '正常' })
+  },
+
+  onShow() { this.updateCodex() },
+
+  syncFont() {
+    const s = getScale()
+    let idx = 0
+    let best = Infinity
+    for (let i = 0; i < FONT_STEPS.length; i++) {
+      const d = Math.abs(FONT_STEPS[i] - s)
+      if (d < best) { best = d; idx = i }
+    }
+    this.fontName = FONT_NAMES[idx]
+  },
+
+  updateCodex() {
+    const c = this.$app.$def.codexSeen || { T: [], I: [], D: [], A: [] }
+    this.codexText = (c.T.length + c.I.length + c.D.length + c.A.length) + ' 条'
+  },
+
+  cycleFont() {
+    this.$app.$def.tap()
+    const s = getScale()
+    let idx = 0
+    let best = Infinity
+    for (let i = 0; i < FONT_STEPS.length; i++) {
+      const d = Math.abs(FONT_STEPS[i] - s)
+      if (d < best) { best = d; idx = i }
+    }
+    idx = (idx + 1) % FONT_STEPS.length
+    saveScale(FONT_STEPS[idx], null)
+    this.syncFont()
+    this.fontTick++
+  },
+
+  toggleAutoSpeed() {
+    this.$app.$def.tap()
+    const fast = this.speedName !== '快速'
+    this.speedName = fast ? '快速' : '正常'
+    saveKey('lr_speed', fast ? '1' : '0', null)
+  },
+
+  showCounts() {
+    this.$app.$def.tap()
+    this.counts = this.counts ? '' : ('词条 ' + counts().talents + ' · 事件 ' + counts().events +
+      ' · 物品 ' + counts().items + ' · 结局 ' + counts().endings + ' · 成就 ' + counts().achievements)
+  },
+
+  goCodex() { router.push({ uri: 'pages/codex' }) },
+  back() { router.back() }
+}
+</script>
+
+<style>
+  @import '../../common/style/base.css';
+
+  .rows {
+    width: 100%;
+    flex-direction: column;
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  .scroll {
+    width: 100%;
+    flex: 1;
+    flex-direction: column;
+    margin-top: 8px;
+  }
+
+  .sec { color: #ffc857; margin-top: 6px; }
+  .rule { color: #b9bec6; margin-top: 2px; }
+</style>

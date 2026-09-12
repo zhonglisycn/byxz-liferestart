@@ -1,0 +1,60 @@
+{
+  "package": "com.byxz.liferestart",
+  "name": "人生重开·修仙",
+  "versionName": "2.2.1",
+  "versionCode": 221,
+  "minPlatformVersion": 1000,
+  "icon": "/common/icon/logo.png",
+  "deviceTypeList": [
+    "watch"
+  ],
+  "description": "重开人生：修仙 / 炼体 / 魔法 / 科技 四条体系 · byxz",
+  "features": [
+    {
+      "name": "system.router"
+    },
+    {
+      "name": "system.prompt"
+    },
+    {
+      "name": "system.storage"
+    },
+    {
+      "name": "system.vibrator"
+    },
+    {
+      "name": "system.device"
+    },
+    {
+      "name": "system.brightness"
+    }
+  ],
+  "config": {
+    "logLevel": "log",
+    "designWidth": "device-width"
+  },
+  "router": {
+    "entry": "pages/index",
+    "pages": {
+      "pages/index": {
+        "component": "index"
+      },
+      "pages/alloc": {
+        "component": "alloc"
+      },
+      "pages/life": {
+        "component": "life"
+      },
+      "pages/end": {
+        "component": "end"
+      },
+      "pages/codex": {
+        "component": "codex"
+      },
+      "pages/more": {
+        "component": "more"
+      }
+    }
+  },
+  "minAPILevel": 1
+}

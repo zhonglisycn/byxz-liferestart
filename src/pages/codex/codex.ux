@@ -1,0 +1,303 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="back">返回</text>
+      <text class="t-title" style="font-size: {{fs(17, fontTick)}}px">词条图鉴</text>
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="clearSeen">清空</text>
+    </div>
+
+    <div class="tabs">
+      <div class="tab {{tab === $item.k ? 'tab-on' : ''}}" for="{{tabs}}" tid="k" @click="setTab($item.k)">
+        <text class="tab-t" style="font-size: {{fs(13, fontTick)}}px">{{$item.name}}</text>
+        <text class="tab-n" style="font-size: {{fs(11, fontTick)}}px">{{$item.seen}}/{{$item.all}}</text>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="filter {{filter === $item.k ? 'filter-on' : ''}}" for="{{filters}}" tid="k" @click="setFilter($item.k)">
+        <text class="filter-t" style="font-size: {{fs(12, fontTick)}}px">{{$item.name}}</text>
+      </div>
+    </div>
+
+    <div class="status">
+      <text class="t-sub" style="font-size: {{fs(12, fontTick)}}px">{{hint}}</text>
+    </div>
+
+    <scroll class="scroll">
+      <div class="row" for="{{pageList}}" tid="id">
+        <text class="row-name {{$item.locked ? 'locked' : 'r' + $item.rarity}}" style="color: #e8e8e8; font-size: {{fs(13, fontTick)}}px">{{$item.show}}</text>
+        <text class="row-desc {{$item.locked ? 'locked' : ''}}" style="color: #e8e8e8; font-size: {{fs(11, fontTick)}}px">{{$item.desc}}</text>
+      </div>
+    </scroll>
+
+    <div class="pager" if="{{showPager}}">
+      <div class="pg-btn" @click="prevPage">
+        <text class="pg-t" style="font-size: {{fs(13, fontTick)}}px">上一页</text>
+      </div>
+      <text class="pg-n" style="font-size: {{fs(12, fontTick)}}px">{{pageText}}</text>
+      <div class="pg-btn" @click="nextPage">
+        <text class="pg-t" style="font-size: {{fs(13, fontTick)}}px">下一页</text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import { fs, ensureScale } from '../../common/core/ui'
+import { setContent, codex, RARITY_NAME, PATH_LIST } from '../../common/core/engine'
+import { saveKey } from '../../common/core/util'
+
+// 图鉴条目最多上千条：一屏全渲染会一次创建上千个原生控件，手环直接看门狗重启。
+// 每页只渲染 PAGE_SIZE 条，翻页看其余。
+const PAGE_SIZE = 40
+
+export default {
+  fs: fs,
+
+  private: {
+    fontTick: 0,
+    tab: 'T',
+    tabs: [],
+    filters: [],
+    filter: 'all',
+    all: [],          // 筛选后的完整列表（不直接渲染）
+    pageList: [],     // 当前页真正渲染的行
+    page: 0,
+    pageText: '',
+    showPager: false,
+    hint: ''
+  },
+
+  onInit() {
+    ensureScale(() => { this.fontTick++ })
+    setContent(this.$app.$def.CONTENT)
+    this.filters = [
+      { k: 'all', name: '全部' },
+      { k: 'got', name: '已解锁' },
+      { k: 'lock', name: '未解锁' }
+    ]
+    this.buildTabs()
+    this.buildList()
+  },
+
+  onShow() {
+    this.buildTabs()
+    this.buildList()
+  },
+
+  seen() {
+    const c = this.$app.$def.codexSeen
+    return c || { T: [], I: [], D: [], A: [] }
+  },
+
+  buildTabs() {
+    const cx = codex()
+    const s = this.seen()
+    const pseen = s.P || []
+    const tabs = [
+      { k: 'P', name: '体系', seen: pseen.length, all: PATH_LIST.length },
+      { k: 'T', name: '天赋', seen: s.T.length, all: cx.talents.length },
+      { k: 'I', name: '物品', seen: s.I.length, all: cx.items.length },
+      { k: 'D', name: '结局', seen: s.D.length, all: cx.endings.length },
+      { k: 'A', name: '成就', seen: s.A.length, all: cx.achievements.length }
+    ]
+    this.tabs = tabs
+    const cur = tabs.filter(t => t.k === this.tab)[0]
+    this.hint = cur ? (cur.name + ' 已解锁 ' + cur.seen + ' / ' + cur.all) : ''
+  },
+
+  setFilter(k) {
+    this.$app.$def.tap()
+    this.filter = k
+    this.buildList()
+  },
+
+  buildList() {
+    const cx = codex()
+    const s = this.seen()
+    if (this.tab === 'P') {
+      const walked = s.P || []
+      const out = []
+      for (let i = 0; i < PATH_LIST.length; i++) {
+        const d = PATH_LIST[i]
+        const got = walked.indexOf(d.key) >= 0
+        const names = d.ladder.map(x => x.name).join(' → ')
+        out.push({
+          id: 'P_' + d.key,
+          locked: !got,
+          show: got ? d.name : '？？？',
+          desc: got ? (d.root + ' ｜ ' + d.res + ' / ' + d.sp + ' ｜ ' + names) : '尚未走过这条体系',
+          rarity: 4
+        })
+      }
+      this.setAll(this.applyFilter(out))
+      return
+    }
+    const keys = { T: 'talents', I: 'items', D: 'endings', A: 'achievements' }
+    const src = cx[keys[this.tab]] || []
+    const unlocked = s[this.tab] || []
+    const out = []
+    for (let i = 0; i < src.length; i++) {
+      const e = src[i]
+      const got = unlocked.indexOf(e.id) >= 0
+      let show = e.name
+      let desc = e.desc || ''
+      if (!got) { show = '？？？'; desc = '尚未解锁' }
+      else if (this.tab === 'T' && e.rarity) desc = RARITY_NAME[e.rarity] + ' · ' + desc
+      out.push({
+        id: e.id, locked: !got, show: show, desc: desc,
+        rarity: e.rarity || (e.rank || 1)
+      })
+    }
+    this.setAll(this.applyFilter(out))
+  },
+
+  /** 换一批数据，回到第 1 页 */
+  setAll(list) {
+    this.all = list
+    this.page = 0
+    this.showPage()
+  },
+
+  /** 只把当前页切给界面渲染 */
+  showPage() {
+    const total = Math.max(1, Math.ceil(this.all.length / PAGE_SIZE))
+    if (this.page > total - 1) this.page = total - 1
+    if (this.page < 0) this.page = 0
+    const from = this.page * PAGE_SIZE
+    this.pageList = this.all.slice(from, from + PAGE_SIZE)
+    this.showPager = this.all.length > PAGE_SIZE
+    this.pageText = this.all.length ? ((this.page + 1) + ' / ' + total + ' 页') : '暂无'
+  },
+
+  prevPage() {
+    if (this.page <= 0) return
+    this.$app.$def.tap()
+    this.page--
+    this.showPage()
+  },
+
+  nextPage() {
+    if ((this.page + 1) * PAGE_SIZE >= this.all.length) return
+    this.$app.$def.tap()
+    this.page++
+    this.showPage()
+  },
+
+  applyFilter(list) {
+    if (this.filter === 'all') return list
+    const want = this.filter === 'got' ? false : true
+    return list.filter(x => x.locked === want)
+  },
+
+  setTab(k) {
+    this.$app.$def.tap()
+    this.tab = k
+    this.buildTabs()
+    this.buildList()
+  },
+
+  clearSeen() {
+    this.$app.$def.tap()
+    const app = this.$app.$def
+    app.codexSeen = { T: [], I: [], D: [], A: [], P: [] }
+    saveKey('lr_codex', JSON.stringify(app.codexSeen), null)
+    this.buildTabs()
+    this.buildList()
+  },
+
+  back() { router.back() }
+}
+</script>
+
+<style>
+  @import '../../common/style/base.css';
+
+  .tabs {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .tab {
+    width: 42px;
+    height: 40px;
+    border-radius: 10px;
+    background-color: rgba(120, 120, 121, 0.22);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tab-on { background-color: rgba(76, 175, 80, 0.8); }
+  .tab-t { color: #f0e6d2; }
+  .tab-n { color: #8b8f96; }
+
+  .filters {
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .filter {
+    width: 54px;
+    height: 26px;
+    margin-left: 4px;
+    margin-right: 4px;
+    border-radius: 13px;
+    background-color: rgba(120, 120, 121, 0.22);
+    align-items: center;
+    justify-content: center;
+  }
+
+  .filter-on { background-color: rgba(201, 168, 106, 0.9); }
+  .filter-t { color: #f0e6d2; }
+
+  .status { width: 100%; height: 20px; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  .scroll { width: 100%; flex: 1; flex-direction: column; }
+
+  .row {
+    width: 100%;
+    flex-direction: column;
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+
+  .row-name { width: 100%; }
+  .row-desc { width: 100%; }
+
+  .pager {
+    width: 100%;
+    height: 40px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .pg-btn {
+    width: 64px;
+    height: 36px;
+    border-radius: 18px;
+    background-color: rgba(201, 168, 106, 0.88);
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pg-t { color: #2b1d0e; }
+  .pg-n { color: #8b8f96; }
+
+  .r1 { color: #c8cdd4; }
+  .r2 { color: #6fcf97; }
+  .r3 { color: #bb86fc; }
+  .r4 { color: #ffc857; }
+  .r5 { color: #ffc857; }
+  .locked { color: #565b63; }
+</style>

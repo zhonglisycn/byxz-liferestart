@@ -1,0 +1,58 @@
+<script>
+/**
+ * 应用级：保存当前这一局人生（跨页面共享），以及图鉴存档。
+ * 本作无任何付费/激活。
+ */
+import vibrator from '@system.vibrator'
+import { loadKey, saveKey } from './common/core/util'
+import { buildContent } from './common/core/content/index'
+
+export default {
+  run: null,          // 当前人生（可序列化）
+  codexSeen: null,    // 图鉴已解锁的 id 集合 {T:[],I:[],D:[],A:[],P:[]}；P 是走过的体系
+
+  // 全部内容池（词条/事件/物品/结局/成就）——全应用唯一一份。
+  // 在模块求值时装配，不依赖生命周期回调顺序，页面一进来就一定能拿到。
+  CONTENT: buildContent(),
+
+  onCreate() {
+    this.codexSeen = { T: [], I: [], D: [], A: [], P: [] }
+    loadKey('lr_codex', (ok, v) => {
+      if (ok && v) {
+        try {
+          const o = JSON.parse(v)
+          if (o && o.T) this.codexSeen = o
+        } catch (e) { console.log('图鉴存档解析失败') }
+      }
+    })
+  },
+
+  onDestroy() { this.run = null },
+
+  /** 轻振动反馈 */
+  tap() {
+    try { vibrator.vibrate({ mode: 'short' }) } catch (e) { console.log('无振动') }
+  },
+
+  /** 把一次人生里见过的词条/物品/结局/成就记进图鉴 */
+  markCodex(run, endingId, achIds) {
+    const c = this.codexSeen || { T: [], I: [], D: [], A: [], P: [] }
+    if (!c.P) c.P = []
+    const add = (k, id) => { if (id && c[k].indexOf(id) < 0) c[k].push(id) }
+    if (run.path) add('P', run.path.kind)
+    if (run.path2) add('P', run.path2.kind)
+    ;(run.talents || []).forEach(id => add('T', id))
+    ;(run.items || []).forEach(id => add('I', id))
+    add('D', endingId)
+    ;(achIds || []).forEach(id => add('A', id))
+    this.codexSeen = c
+    saveKey('lr_codex', JSON.stringify(c), null)
+  },
+
+  codexCount() {
+    const c = this.codexSeen || { T: [], I: [], D: [], A: [], P: [] }
+    if (!c.P) c.P = []
+    return c.T.length + c.I.length + c.D.length + c.A.length
+  }
+}
+</script>

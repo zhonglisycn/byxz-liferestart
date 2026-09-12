@@ -1,0 +1,12 @@
+# ---------- 依赖与构建产物 ----------
+node_modules/
+dist/
+# 工具链的中间产物目录
+build/
+.temp_*/
+*.log
+
+# ---------- 工具产生的临时目录 ----------
+.ct-*/
+tools/preview/.work/
+tools/preview/out/

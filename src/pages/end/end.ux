@@ -1,0 +1,155 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="again">再来</text>
+      <text class="t-title" style="font-size: {{fs(17, fontTick)}}px">此生结局</text>
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="goCodex">图鉴</text>
+    </div>
+
+    <div class="hero">
+      <text class="hero-name r{{rank}}" style="color: #e8e8e8; font-size: {{fs(22, fontTick)}}px">{{ending.name}}</text>
+      <text class="hero-desc" style="font-size: {{fs(12, fontTick)}}px">{{ending.desc}}</text>
+    </div>
+
+    <div class="facts">
+      <div class="fact" for="{{facts}}" tid="k">
+        <text class="fact-k" style="font-size: {{fs(12, fontTick)}}px">{{$item.k}}</text>
+        <text class="fact-v" style="font-size: {{fs(13, fontTick)}}px">{{$item.v}}</text>
+      </div>
+    </div>
+
+    <scroll class="scroll">
+      <text class="sec" style="font-size: {{fs(13, fontTick)}}px">天赋词条</text>
+      <text class="body" style="font-size: {{fs(12, fontTick)}}px" for="{{talents}}" tid="id">{{$item}}</text>
+
+      <text class="sec" style="font-size: {{fs(13, fontTick)}}px">随身之物</text>
+      <text class="body" style="font-size: {{fs(12, fontTick)}}px" for="{{items}}" tid="id">{{$item}}</text>
+
+      <text class="sec" style="font-size: {{fs(13, fontTick)}}px">达成成就</text>
+      <text class="body ach" style="font-size: {{fs(12, fontTick)}}px" for="{{achs}}" tid="id">{{$item}}</text>
+    </scroll>
+
+    <div class="btn btn-primary" style="width: 100%;" @click="again">
+      <text class="t-btn" style="font-size: {{fs(16, fontTick)}}px">重开人生</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import { fs, ensureScale } from '../../common/core/ui'
+import { setContent, summary, talentById, itemById, codex } from '../../common/core/engine'
+
+export default {
+  fs: fs,
+
+  private: {
+    fontTick: 0,
+    ending: { name: '', desc: '' },
+    rank: 1,
+    facts: [],
+    talents: ['—'],
+    items: ['—'],
+    achs: ['—']
+  },
+
+  onInit() {
+    ensureScale(() => { this.fontTick++ })
+    setContent(this.$app.$def.CONTENT)
+    const run = this.$app.$def.run
+    if (!run) { router.replace({ uri: 'pages/index' }); return }
+    const s = summary(run)
+    this.ending = s.ending
+    this.rank = s.rank.rank
+    this.facts = [
+      { k: '享年', v: s.age + ' 岁' },
+      { k: '体系', v: s.pathName || '凡人' },
+      { k: '境界', v: s.realm },
+      { k: '评分', v: String(s.score) },
+      { k: '评级', v: s.rank.name },
+      { k: '词条', v: run.talents.length + ' 个' },
+      { k: '物品', v: run.items.length + ' 件' }
+    ]
+    const t = run.talents.map(id => { const x = talentById(id); return x ? x.name : id })
+    this.talents = t.length ? t : ['（无）']
+    const it = run.items.map(id => { const x = itemById(id); return x ? x.kind + '·' + x.name : id })
+    this.items = it.length ? it : ['（无）']
+    const cx = codex()
+    const amap = {}
+    for (let i = 0; i < cx.achievements.length; i++) amap[cx.achievements[i].id] = cx.achievements[i]
+    const a = s.achievements.map(id => {
+      const x = amap[id]
+      return x ? x.name + '（' + x.desc + '）' : id
+    })
+    this.achs = a.length ? a : ['（无）']
+    // 记进图鉴
+    this.$app.$def.markCodex(run, s.ending.id, s.achievements)
+  },
+
+  again() {
+    this.$app.$def.tap()
+    this.$app.$def.run = null
+    router.replace({ uri: 'pages/index' })
+  },
+
+  goCodex() { router.push({ uri: 'pages/codex' }) }
+}
+</script>
+
+<style>
+  @import '../../common/style/base.css';
+
+  .hero {
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    margin-top: 4px;
+    margin-bottom: 6px;
+  }
+
+  .hero-name { text-align: center; width: 100%; font-weight: bold; }
+  .hero-desc { color: #b9bec6; text-align: center; width: 100%; margin-top: 3px; }
+
+  .r1 { color: #c8cdd4; }
+  .r2 { color: #6fcf97; }
+  .r3 { color: #7fb3ff; }
+  .r4 { color: #bb86fc; }
+  .r5 { color: #ffc857; }
+
+  .facts {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .fact {
+    /* 80 + 3 边距 → 两张一行正好 172px，装得进 176px 的可用宽度（212 - 左右各 18）。
+       写成 84 的话两张 180px 放不下，设备上会被挤成一行一张并横向错位
+       ——主菜单当年就是这个坑，这里是同一处。 */
+    width: 80px;
+    margin: 3px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-radius: 9px;
+    background-color: rgba(120, 120, 121, 0.22);
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .fact-k { color: #8b8f96; }
+  .fact-v { color: #f0e6d2; margin-top: 2px; }
+
+  .scroll {
+    width: 100%;
+    flex: 1;
+    flex-direction: column;
+    margin-top: 4px;
+  }
+
+  .sec { color: #ffc857; margin-top: 6px; }
+  .body { color: #b9bec6; }
+  .ach { color: #6fcf97; }
+</style>
