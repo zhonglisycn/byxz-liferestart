@@ -22,7 +22,7 @@
       <text class="now-chg" style="font-size: {{fs(12, fontTick)}}px">{{cur.changes}}</text>
     </div>
 
-    <scroll class="log">
+    <scroll class="log" scroll-y="true" bounces="true">
       <div class="log-row" for="{{logs}}" tid="id">
         <text class="log-age" style="font-size: {{fs(12, fontTick)}}px">{{$item.age}}岁</text>
         <text class="log-text" style="font-size: {{fs(12, fontTick)}}px">{{$item.line}}</text>
@@ -32,7 +32,7 @@
     <div class="mask" if="{{info}}">
       <div class="dialog">
         <text class="t-dlg-title" style="font-size: {{fs(15, fontTick)}}px">本局词条</text>
-        <scroll class="info-scroll">
+        <scroll class="info-scroll" scroll-y="true" bounces="true">
           <text class="info-line" style="font-size: {{fs(12, fontTick)}}px" for="{{talentLines}}" tid="id">{{$item}}</text>
           <text class="info-sec" style="font-size: {{fs(12, fontTick)}}px">随身之物</text>
           <text class="info-line" style="font-size: {{fs(12, fontTick)}}px" for="{{itemLines}}" tid="id">{{$item}}</text>

@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <scroll class="scroll">
+    <scroll class="scroll" scroll-y="true" bounces="true">
       <text class="sec" style="font-size: {{fs(13, fontTick)}}px">天赋词条</text>
       <text class="body" style="font-size: {{fs(12, fontTick)}}px" for="{{talents}}" tid="id">{{$item}}</text>
 

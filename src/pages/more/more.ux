@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <scroll class="scroll">
+    <scroll class="scroll" scroll-y="true" bounces="true">
       <text class="sec" style="font-size: {{fs(13, fontTick)}}px">玩法说明</text>
       <text class="rule" style="font-size: {{fs(12, fontTick)}}px">1. 开局抽 10 个天赋词条，选 3 个带走</text>
       <text class="rule" style="font-size: {{fs(12, fontTick)}}px">2. 把 20 点分配到智力 / 情商 / 体质 / 幸运</text>
@@ -57,7 +57,7 @@ export default {
     fontName: '标准',
     speedName: '正常',
     codexText: '',
-    version: '2.3.1',
+    version: '2.3.2',
     counts: ''
   },
 

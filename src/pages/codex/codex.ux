@@ -22,7 +22,7 @@
       <text class="t-sub" style="font-size: {{fs(11, fontTick)}}px">{{hint}}</text>
     </div>
 
-    <scroll class="scroll">
+    <scroll class="scroll" scroll-y="true" bounces="true">
       <div class="row" for="{{pageList}}" tid="id">
         <text class="row-name {{$item.locked ? 'locked' : 'r' + $item.rarity}}" style="color: #e8e8e8; font-size: {{fs(13, fontTick)}}px">{{$item.show}}</text>
         <text class="row-desc {{$item.locked ? 'locked' : ''}}" style="color: #e8e8e8; font-size: {{fs(11, fontTick)}}px">{{$item.desc}}</text>
