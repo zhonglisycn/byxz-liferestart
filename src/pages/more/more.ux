@@ -57,7 +57,7 @@ export default {
     fontName: '标准',
     speedName: '正常',
     codexText: '',
-    version: '2.2.1',
+    version: '2.3.0',
     counts: ''
   },
 

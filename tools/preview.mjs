@@ -285,7 +285,7 @@ function instantiate(def, appDef) {
 }
 
 /* ---------- 主流程 ---------- */
-const ALL_PAGES = ['index', 'alloc', 'life', 'end', 'codex', 'more']
+const ALL_PAGES = ['home', 'index', 'alloc', 'life', 'end', 'codex', 'more']
 
 /** 渲染前先造一局人生（人生页/结算页都依赖 $app.run） */
 const ENG = await import(pathToFileURL(path.join(TMP, 'core', 'engine.js')).href)

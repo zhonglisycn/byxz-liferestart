@@ -334,6 +334,9 @@ function applyEff(run, eff) {
   if (typeof eff.luckRate === 'number') run.bonus.luckRate += eff.luckRate
   if (eff.flag) run.flags[eff.flag] = true
   if (eff.dualPath) run.flags.dualPath = true
+  // 此前漏读这个字段：规范文档与校验脚本都把它列为合法效果，但引擎从不处理，
+  // 于是「天生绝脉」「诡异缠身」「夺舍体质」三条词条写着"此生与仙无缘"却照样能修炼。
+  if (eff.forbidCultivation) run.flags.noPathOff = true
   if (eff.item && !hasItem(run, eff.item)) {
     run.items.push(eff.item)
     const it = ITEM_MAP[eff.item]
@@ -665,12 +668,79 @@ export function summary(run) {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* 界面用的"人话"翻译：把 eff / req 写成看得懂的效果与条件              */
+/*                                                                    */
+/* 图鉴以前只显示 flavor 文案，玩家看不到词条/事件到底改了什么、什么条件 */
+/* 才会触发，导致"词条与事件对不上"的观感。这里统一翻译一次，图鉴、弹窗  */
+/* 都复用。                                                            */
+/* ------------------------------------------------------------------ */
+
+const EFF_ATTR_NAME = { iq: '智力', eq: '情商', hp: '体质', luck: '幸运' }
+function numText(v) { return (v > 0 ? '+' : '') + v }
+function pctText(v) { return (v > 0 ? '+' : '') + Math.round(v * 100) + '%' }
+
+/** 效果摘要（词条 / 事件 / 物品通用） */
+export function effText(eff) {
+  if (!eff) return ''
+  const out = []
+  for (let i = 0; i < ATTRS.length; i++) {
+    const k = ATTRS[i]
+    if (typeof eff[k] === 'number' && eff[k] !== 0) out.push(EFF_ATTR_NAME[k] + numText(eff[k]))
+  }
+  if (typeof eff.lifespan === 'number' && eff.lifespan !== 0) out.push('寿元' + numText(eff.lifespan))
+  if (eff.progressRate) out.push('修炼速度' + pctText(eff.progressRate))
+  if (eff.breakthrough) out.push('突破率' + pctText(eff.breakthrough))
+  if (eff.luckRate) out.push('好运权重' + pctText(eff.luckRate))
+  if (eff.spiritRoot) out.push('觉醒灵根')
+  if (eff.enterPath) out.push('可入' + pathDef(eff.enterPath).name)
+  if (eff.dualPath) out.push('可双修')
+  if (eff.forbidCultivation) out.push('此生无法修炼')
+  if (eff.item) {
+    const it = ITEM_MAP[eff.item]
+    out.push('获得' + (it ? it.kind + '·' + it.name : '物品'))
+  }
+  if (eff.daoHeart || eff.sp) out.push('道心' + numText(eff.daoHeart || eff.sp))
+  if (eff.progress) out.push('资源+' + eff.progress)
+  if (eff.pathUp || eff.realmUp) out.push('立即突破')
+  if (eff.tribulation) out.push('引动劫难')
+  if (eff.die) out.push('必定身亡（' + eff.die + '）')
+  if (eff.dieChance) out.push('意外身亡' + pctText(eff.dieChance))
+  if (eff.flag) out.push('埋下伏笔')
+  return out.join(' · ')
+}
+
+/** 触发条件摘要（事件 / 结局 / 成就通用） */
+export function reqText(req) {
+  if (!req) return '无条件'
+  const out = []
+  for (let i = 0; i < ATTRS.length; i++) {
+    const k = ATTRS[i]
+    if (typeof req[k] === 'number') out.push(EFF_ATTR_NAME[k] + '≥' + req[k])
+  }
+  if (req.lt) for (const k in req.lt) out.push(EFF_ATTR_NAME[k] + '<' + req.lt[k])
+  if (typeof req.ageMin === 'number') out.push('年龄≥' + req.ageMin)
+  if (req.path) out.push('已入' + pathDef(req.path).name)
+  if (typeof req.pathLevel === 'number') out.push('境界≥' + req.pathLevel + '级')
+  if (req.noPath) out.push('尚未踏入体系')
+  if (req.dualPath) out.push('已双修')
+  if (req.cultivation) out.push('已修仙')
+  if (req.noCultivation) out.push('未修仙')
+  if (typeof req.realm === 'number') out.push('境界≥' + req.realm)
+  if (req.items) out.push('需持有指定之物')
+  if (req.talents) out.push('需指定词条')
+  if (req.flags) out.push('需前置经历')
+  if (req.notFlags) out.push('未经历过')
+  return out.length ? out.join(' ') : '无条件'
+}
+
 export function codex() {
   return {
     talents: ALL_TALENTS,
     items: ALL_ITEMS,
     endings: ALL_ENDINGS,
     achievements: ALL_ACHIEVEMENTS,
+    events: ALL_EVENTS,
     paths: PATH_LIST
   }
 }

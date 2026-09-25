@@ -57,7 +57,7 @@ export default {
     ensureScale(() => { this.fontTick++ })
     setContent(this.$app.$def.CONTENT)
     const run = this.$app.$def.run
-    if (!run) { router.replace({ uri: 'pages/index' }); return }
+    if (!run) { router.replace({ uri: 'pages/home' }); return }
     const s = summary(run)
     this.ending = s.ending
     this.rank = s.rank.rank

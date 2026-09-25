@@ -194,6 +194,31 @@ test('大量随机局不崩（200 局）', () => {
   }
 })
 
+test('forbidCultivation：写了"此生无法修炼"的词条真的进不去体系', () => {
+  const run = E.newRun(20260912)
+  E.chooseTalents(run, ['T037'])                 // 天生绝脉：经脉闭塞，此生与仙无缘
+  assert.equal(!!run.flags.noPathOff, true, '应在选择词条时就打上禁止修炼的印记')
+  const kinds = ['cultivate', 'body', 'magic', 'tech']
+  for (let i = 0; i < kinds.length; i++) {
+    assert.equal(E.enterPath(run, kinds[i]), false, '带"天生绝脉"不该能入' + kinds[i])
+  }
+  assert.equal(!!run.path, false, '四条体系都进不去，run.path 应仍为空')
+})
+
+test('effText / reqText：图鉴展示的效果与条件都要能翻译成人话', () => {
+  const t = E.talentById('T037')
+  assert.ok(E.effText(t.eff).indexOf('无法修炼') >= 0, '效果摘要里应写明禁止修炼，实际：' + E.effText(t.eff))
+  const c = E.codex()
+  let blank = 0
+  for (let i = 0; i < c.talents.length; i++) if (!E.effText(c.talents[i].eff)) blank++
+  console.log('    词条 ' + c.talents.length + ' 条，其中没有可显示效果的 ' + blank + ' 条')
+  console.log('    事件 ' + c.events.length + ' 条，示例条件：' + E.reqText(c.events[0].req))
+  assert.equal(E.reqText({ iq: 8, ageMin: 12 }), '智力≥8 年龄≥12')
+  assert.ok(E.reqText(null) === '无条件')
+  // 事件池要能在图鉴里被列出来
+  assert.ok(c.events && c.events.length > 0, 'codex() 应包含事件池')
+})
+
 test('日志封顶：长寿命也不会让日志/存档无限膨胀', () => {
   let maxLen = 0
   let maxJson = 0

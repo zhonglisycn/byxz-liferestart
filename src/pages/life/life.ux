@@ -52,7 +52,7 @@
 <script>
 import router from '@system.router'
 import { fs, ensureScale } from '../../common/core/ui'
-import { setContent, step, pathText, ATTRS, lifespan, talentById, itemById } from '../../common/core/engine'
+import { setContent, step, pathText, ATTRS, lifespan, talentById, itemById, effText } from '../../common/core/engine'
 import { loadKey } from '../../common/core/util'
 
 const MAX_LOG = 40
@@ -82,7 +82,7 @@ export default {
     ensureScale(() => { this.fontTick++ })
     setContent(this.$app.$def.CONTENT)
     const run = this.$app.$def.run
-    if (!run) { router.replace({ uri: 'pages/index' }); return }
+    if (!run) { router.replace({ uri: 'pages/home' }); return }
     loadKey('lr_speed', (ok, v) => { this.interval = (ok && v === '1') ? 200 : 420 })
     this.sync()
   },
@@ -127,12 +127,16 @@ export default {
     this.$app.$def.tap()
     this.talentLines = (run.talents || []).map(id => {
       const t = talentById(id)
-      return t ? (t.name + '：' + t.desc) : id
+      if (!t) return id
+      const eff = effText(t.eff)
+      return t.name + (eff ? '（' + eff + '）' : '') + '：' + (t.desc || '')
     })
     if (!this.talentLines.length) this.talentLines = ['（没有词条）']
     this.itemLines = (run.items || []).map(id => {
       const it = itemById(id)
-      return it ? (it.kind + '·' + it.name + '：' + it.desc) : id
+      if (!it) return id
+      const eff = effText(it.eff)
+      return it.kind + '·' + it.name + (eff ? '（' + eff + '）' : '') + '：' + (it.desc || '')
     })
     if (!this.itemLines.length) this.itemLines = ['（空手）']
     this.info = true

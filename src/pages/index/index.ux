@@ -1,9 +1,9 @@
 <template>
   <div class="page">
     <div class="header">
+      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="goHome">首页</text>
+      <text class="t-title" style="font-size: {{fs(17, fontTick)}}px">抽词条</text>
       <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="goCodex">图鉴</text>
-      <text class="t-title" style="font-size: {{fs(17, fontTick)}}px">人生重开</text>
-      <text class="t-back" style="font-size: {{fs(15, fontTick)}}px" @click="goMore">设置</text>
     </div>
 
     <div class="status">
@@ -141,7 +141,7 @@ export default {
   },
 
   goCodex() { router.push({ uri: 'pages/codex' }) },
-  goMore() { router.push({ uri: 'pages/more' }) }
+  goHome() { router.replace({ uri: 'pages/home' }) }
 }
 </script>
 

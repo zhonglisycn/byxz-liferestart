@@ -55,7 +55,7 @@ export default {
     ensureScale(() => { this.fontTick++ })
     setContent(this.$app.$def.CONTENT)
     const run = this.$app.$def.run
-    if (!run) { router.replace({ uri: 'pages/index' }); return }
+    if (!run) { router.replace({ uri: 'pages/home' }); return }
     run.attrs = { iq: 0, eq: 0, hp: 0, luck: 0 }
     if (run.talents && run.talents.length) {
       this.talentText = '天赋：' + run.talents.map(id => {
@@ -100,8 +100,8 @@ export default {
   },
 
   // 不用 router.back()：上一页已被 replace 掉，back 没有可回退的页；
-  // 显式回首页，语义就是"放弃这局，重新抽词条"。
-  back() { router.replace({ uri: 'pages/index' }) }
+  // 显式回首页，语义就是"放弃这局"。
+  back() { router.replace({ uri: 'pages/home' }) }
 }
 </script>
 
