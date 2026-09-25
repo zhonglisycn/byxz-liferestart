@@ -8,6 +8,18 @@ import { loadKey, saveKey } from './common/core/util'
 import { buildContent } from './common/core/content/index'
 
 export default {
+
+  // 页面留白（两档）：胶囊屏上下是半圆，内容可滑动，所以留边即可；
+  // 「全屏 0px」不提供——这两个应用的顶栏是固定的，0 边距会被半圆切掉且滚不出来。
+  PAD_PRESETS: [
+    { name: '留边', top: 30, bottom: 32, side: 18 },
+    { name: '保守', top: 50, bottom: 50, side: 18 }
+  ],
+  padMode: 0,
+  padTop: 30,
+  padBottom: 32,
+  padSide: 18,
+  padName: '留边',
   run: null,          // 当前人生（可序列化）
   codexSeen: null,    // 图鉴已解锁的 id 集合 {T:[],I:[],D:[],A:[],P:[]}；P 是走过的体系
 
@@ -16,6 +28,10 @@ export default {
   CONTENT: buildContent(),
 
   onCreate() {
+    loadKey('pad_mode', (ok, v) => {
+      const i = ok ? parseInt(v, 10) : NaN
+      this.setPad(isNaN(i) ? 0 : i, true)
+    })
     this.codexSeen = { T: [], I: [], D: [], A: [], P: [] }
     loadKey('lr_codex', (ok, v) => {
       if (ok && v) {
@@ -47,6 +63,23 @@ export default {
     ;(achIds || []).forEach(id => add('A', id))
     this.codexSeen = c
     saveKey('lr_codex', JSON.stringify(c), null)
+  },
+
+  /** 切换页面留白档位 */
+  setPad(i, silent) {
+    const list = this.PAD_PRESETS
+    const k = Math.max(0, Math.min(list.length - 1, i | 0))
+    this.padMode = k
+    this.padTop = list[k].top
+    this.padBottom = list[k].bottom
+    this.padSide = list[k].side
+    this.padName = list[k].name
+    if (!silent) this.savePad()
+    return k
+  },
+
+  savePad() {
+    try { saveKey('pad_mode', String(this.padMode), null) } catch (e) { /* 忽略 */ }
   },
 
   codexCount() {
